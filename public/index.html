@@ -4,19 +4,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>XSS Exfil Logger - PoC</title>
-  <style>body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }</style>
+  <style>
+    body { font-family: monospace; background: #111; color: #0f0; padding: 20px; line-height: 1.5; }
+    pre { background: #222; padding: 15px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
+    h1 { color: #0f8; }
+  </style>
 </head>
 <body>
-  <h1>XSS Data Logger (Vercel PoC)</h1>
-  <p>Data exfil akan muncul di bawah ini (refresh halaman untuk update manual).</p>
-  <pre id="log"></pre>
+  <h1>XSS Exfil Logger (GET Version)</h1>
+  <p>Data exfil dari XSS akan muncul di bawah ini secara otomatis saat link dibuka.</p>
+  <p><strong>Cara test:</strong> Jalankan payload XSS → refresh halaman ini untuk lihat data terbaru.</p>
+  <hr>
+
+  <h2>Received Exfil Data:</h2>
+  <pre id="log">Belum ada data... (buka payload XSS lalu refresh halaman ini)</pre>
 
   <script>
-    // Untuk demo: tampilkan dari query string (jika GET)
+    // Baca query string dari URL
     const urlParams = new URLSearchParams(window.location.search);
-    const data = urlParams.get('data');
-    if (data) {
-      document.getElementById('log').textContent += decodeURIComponent(data) + '\n\n';
+    const rawData = urlParams.get('data');
+
+    if (rawData) {
+      try {
+        const parsed = JSON.parse(rawData);
+        document.getElementById('log').textContent = JSON.stringify(parsed, null, 2);
+      } catch (e) {
+        document.getElementById('log').textContent = 'Error parsing data: ' + e.message + '\nRaw: ' + rawData;
+      }
     }
   </script>
 </body>
